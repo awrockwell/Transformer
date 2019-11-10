@@ -1,6 +1,16 @@
 ﻿# Transformer
 Takes in a database and finds the best fitting linear transformations in Python
 
+Notes:
+How do I want to intake the DF
+Y with many Xs?
+/\ YES! Other way is cumbersome
+
+How do you want the Output?
+Appended to the right, title changed to the transform, e.g., X4.BoxCox
+Another Table will have the metrics of each conversion
+
+
 ### To do list:
 - [ ]	User inputs dataframe file
 - [ ]	Python Reads File and Relays Column Headers to User

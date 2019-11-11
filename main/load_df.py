@@ -2,7 +2,6 @@ import pandas as pd
 import os
 
 DATA_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/data/"
-TRANSFORMERS_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/transformers/"
 
 # print(os.path.abspath(__file__))
 class load_data:
@@ -26,6 +25,6 @@ class load_data:
         dfXs = dfXs.loc[:, dfXs.columns != 'Y']
         return dfY, dfXs
 
-DataLoaderClass = load_data("TestData.csv")
-print(DataLoaderClass.df_loader())
-print(DataLoaderClass.splitYX())
+# DataLoaderClass = load_data("TestData.csv")
+# print(DataLoaderClass.df_loader())
+# print(DataLoaderClass.splitYX())

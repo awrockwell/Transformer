@@ -1,5 +1,6 @@
 import os
-from load_df import df_loader
+from load_df import load_data
+from measure import measure
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -11,33 +12,18 @@ import time
 from functools import wraps
 from time import time
 
-def measure(func):
-    @wraps(func)
-    def _time_it(*args, **kwargs):
-        start = time() * 1000
-        try:
-            return func(*args, **kwargs)
-        finally:
-            end_ = (time() * 1000 - start)/36000
-            print(f"Total execution time: {end_ if end_ > 0 else 0} mins")
-    return _time_it
+DataLoaderClass = load_data("TestData.csv")
+# print(DataLoaderClass.df_loader())
+dfY, dfXs = DataLoaderClass.splitYX()
 
-
-FILENAME = "TestDataLargeLogical.csv"
-dfY = df_loader(FILENAME)["Y"]
-
-dfXs = df_loader(FILENAME)
-dfXs = dfXs.loc[:, dfXs.columns != 'Y']
-
-dfX1 = df_loader(FILENAME)["Y"]
-dfYX = df_loader(FILENAME)[["Y", "X1"]]
-
-print(dfYX)
 reg = linear_model.LinearRegression()
 
-
 # all first column
-print(dfXs.iloc[:,0])
+# print(dfXs.iloc[:,0])
+
+dfYX = pd.DataFrame([dfY, dfXs.iloc[:,0]])
+dfYX = dfYX.transpose()
+print(dfYX)
 
 @measure
 def runtimeReg():
@@ -52,18 +38,19 @@ def runtimeReg():
 pt = PowerTransformer()
 
 data = dfYX
-
-print(data)
 print(pt.fit(data))
 print(pt.lambdas_)
-print(pt.transform(data))
-np.savetxt("foo.csv", pt.transform(data), delimiter=",")
+print(pt.fit_transform(data))
+# print(pt.transform(data))
+np.savetxt("foo.csv", pt.lambdas_, delimiter=",")
 
-toconvert = (pt.transform(data))
 
-df['newcol'] = arr.toarray().tolist()
 
-df.to_csv('file1.csv')
+# toconvert = (pt.transform(data))
+
+# df['newcol'] = arr.toarray().tolist()
+
+# df.to_csv('file1.csv')
 # print(pd.DataFrame.to_csv(dfYX))
 
 

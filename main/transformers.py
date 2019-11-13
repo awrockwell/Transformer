@@ -10,14 +10,17 @@ from matplotlib import pyplot
 from sklearn.preprocessing import PowerTransformer
 from sklearn import linear_model, metrics
 
+pd.set_option('display.float_format', lambda x: '%.6f' % x)
 DATA_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/data/"
 
 class transformer:
-    def __init__(self, dfY, dfXs, dfAll, dfXn):
+    def __init__(self, dfY, dfXs, dfAll, dfXn, TransClass):
         self.dfY = dfY
         self.dfXs = dfXs
         self.dfAll = dfAll
         self.dfXn = dfXn
+        self.TransClass = TransClass
+
 
     def iterate_columns(self):
         '''
@@ -112,12 +115,93 @@ class transformer:
         '''
         data = self.dfAll
         X1 = self.dfXn
-
         transX1 = (X1 - min(X1)) / (max(X1)-min(X1))
-
         correl = np.corrcoef(self.dfY, transX1)[1,0]
-
         return transX1
+
+
+    def BestLambda(self):
+        '''
+        Finds optimal lambda for functions
+        :return: Pandas Dataframe
+        '''
+        data = self.dfAll
+        Xs = self.dfXs
+        Y = self.dfY
+        reg = linear_model.LinearRegression()
+        TransformClass = self.TransClass()
+
+        df = pd.DataFrame({'Lambda': [],'Correlation': []})
+
+        starters = TransformClass.starters
+        rotations = TransformClass.rotations
+
+        for x in range(rotations):
+            if x < len(starters):
+                Lambda = starters[x]
+            else:
+                Lambda = df['Lambda'][(df['Correlation'].nlargest(2)).index].mean()
+                # plus or minus the range based if it's on the min or max for if highest is outer,
+                # else is average of 2 points, maybe just times 2 for now
+            transX1 = TransformClass.equation(Xs=Xs, Lambda=Lambda)
+            reg.fit(transX1, Y)
+            df = df.append(pd.DataFrame({'Lambda': [Lambda],
+                                         'Correlation': [metrics.r2_score(Y, abs(reg.predict(transX1)))]}), ignore_index=True)
+
+        BestLambda = float(df['Lambda'][(df['Correlation'].nlargest(1)).index])
+        BestCorrel = float(df['Correlation'].nlargest(1))
+
+        dfOut = TransformClass.equation(Xs=Xs, Lambda=BestLambda)
+
+        # Rename fdOut title names to include correlation and transform type and lambda
+        dfOut.columns = dfOut.columns + "|" + TransformClass.__class__.__name__ + "|" + str(BestLambda)
+
+        return dfOut
+
+
+class funcHolding:
+    def __init__(self):
+        pass
+
+
+class BoxCox(funcHolding):
+    starters = [-5, 0.00001, 5]
+    rotations = 15
+
+    def equation(self, Xs, Lambda):
+        return (Xs ** Lambda - 1) / Lambda
+
+
+class Inverse(funcHolding):
+    starters = [-1000, 0, 1000]
+    rotations = 15
+
+    def equation(self, Xs, Lambda):
+        return 1 / (Xs + Lambda)
+
+
+class Normalize01(funcHolding):
+    starters = []
+    rotations = 1
+
+    def equation(self, Xs, Lambda):
+        return (Xs - Xs.min()) / (Xs.max() - Xs.min())
+
+class NormalizeStdDev(funcHolding):
+    starters = []
+    rotations = 1
+
+    def equation(self, Xs, Lambda):
+        return (Xs - Xs.mean()) / Xs.std()
+
+
+class LNXD1MX(funcHolding):
+    starters = [-1000, 0, 1000]
+    rotations = 15
+
+    def equation(self, Xs, Lambda):
+        return Xs / (Lambda - Xs)
+
 
 
 DataLoaderClass = load_data("TestData.csv")
@@ -125,11 +209,17 @@ dfAll = DataLoaderClass.df_loader()
 dfY, dfXs = DataLoaderClass.splitYX()
 
 # asdf = transformer(dfY, dfXs, dfAll, dfXs.iloc[:, 0])
-asdf = transformer(dfY, dfXs, dfAll, dfXs.iloc[:, 0])
+asdf = transformer(dfY, dfXs, dfAll, dfXs.iloc[:, 0],LNXD1MX)
 
+print(range(0))
+print(asdf.BestLambda())
+asdf.BestLambda().to_csv("normalized.csv")
 
-# print(asdf.GroupBoxCox())
-print(asdf.Normalize01())
+#print(asdf.GroupBoxCox())
+# print(asdf.Normalize01())
+
+# print(asdf.BoxCox())
+# print(asdf.Inverse())
 
 #print(dfXs.iloc[:, 0])
 
@@ -146,3 +236,14 @@ print(asdf.Normalize01())
 # np.savetxt("foo.csv", runData, delimiter=",")
 
 #(X^Lambda-1)/(Lambda)
+
+
+# mdoel = BoxCox()
+# print(mdoel.starters)
+
+# if TransformClass.rotations == 0:
+#     BestLambda = ""
+#     transX1 = TransformClass.equation(Xs=Xs, Lambda=1)
+#     reg.fit(transX1, Y)
+#     BestCorrel = [metrics.r2_score(Y, abs(reg.predict(transX1)))]
+# else:

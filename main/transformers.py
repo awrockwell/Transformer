@@ -5,10 +5,11 @@ from sklearn.preprocessing import power_transform
 from load_df import load_data
 from pandas import read_csv
 from pandas import DataFrame
-from scipy.stats import boxcox
+import scipy.stats
 from matplotlib import pyplot
 from sklearn.preprocessing import PowerTransformer
 from sklearn import linear_model, metrics
+from math import *
 
 pd.set_option('display.float_format', lambda x: '%.6f' % x)
 DATA_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/data/"
@@ -141,8 +142,7 @@ class transformer:
                 Lambda = starters[x]
             else:
                 Lambda = df['Lambda'][(df['Correlation'].nlargest(2)).index].mean()
-                # plus or minus the range based if it's on the min or max for if highest is outer,
-                # else is average of 2 points, maybe just times 2 for now
+
             transX1 = TransformClass.equation(Xs=Xs, Lambda=Lambda)
             reg.fit(transX1, Y)
             df = df.append(pd.DataFrame({'Lambda': [Lambda],
@@ -156,7 +156,7 @@ class transformer:
         # Rename fdOut title names to include correlation and transform type and lambda
         dfOut.columns = dfOut.columns + "|" + TransformClass.__class__.__name__ + "|" + str(BestLambda)
 
-        return dfOut
+        return data.join(dfOut), df
 
 
 class funcHolding:
@@ -173,7 +173,7 @@ class BoxCox(funcHolding):
 
 
 class Inverse(funcHolding):
-    starters = [-1000, 0, 1000]
+    starters = [-10000, 0, 10000]
     rotations = 15
 
     def equation(self, Xs, Lambda):
@@ -187,6 +187,7 @@ class Normalize01(funcHolding):
     def equation(self, Xs, Lambda):
         return (Xs - Xs.min()) / (Xs.max() - Xs.min())
 
+
 class NormalizeStdDev(funcHolding):
     starters = []
     rotations = 1
@@ -194,26 +195,26 @@ class NormalizeStdDev(funcHolding):
     def equation(self, Xs, Lambda):
         return (Xs - Xs.mean()) / Xs.std()
 
-
-class LNXD1MX(funcHolding):
-    starters = [-1000, 0, 1000]
-    rotations = 15
+class NormalDistCDF(funcHolding):
+    starters = []
+    rotations = 1
 
     def equation(self, Xs, Lambda):
-        return Xs / (Lambda - Xs)
-
+        columnSave = Xs.columns
+        npArray = scipy.stats.norm(Xs.mean(), Xs.std()).cdf(Xs)
+        return pd.DataFrame(data=npArray[0:, 0:], columns = columnSave)
 
 
 DataLoaderClass = load_data("TestData.csv")
 dfAll = DataLoaderClass.df_loader()
 dfY, dfXs = DataLoaderClass.splitYX()
 
-# asdf = transformer(dfY, dfXs, dfAll, dfXs.iloc[:, 0])
-asdf = transformer(dfY, dfXs, dfAll, dfXs.iloc[:, 0],LNXD1MX)
+asdf = transformer(dfY, dfXs, dfAll, dfXs.iloc[:, 0],Inverse)
 
-print(range(0))
+
 print(asdf.BestLambda())
 asdf.BestLambda().to_csv("normalized.csv")
+
 
 #print(asdf.GroupBoxCox())
 # print(asdf.Normalize01())
@@ -246,4 +247,19 @@ asdf.BestLambda().to_csv("normalized.csv")
 #     transX1 = TransformClass.equation(Xs=Xs, Lambda=1)
 #     reg.fit(transX1, Y)
 #     BestCorrel = [metrics.r2_score(Y, abs(reg.predict(transX1)))]
+# else:
+
+#
+# # this can be more sophisticated, largest compared to closest, largest neighbor...
+# # maybe just a function elsewhere that really digs deep into what the next number should bee
+# # I need the largest and closest biggest and closest smallest.. hmm
+# # rank feature! need its rank, its rank - 1 and its rank + 1
+# largestCorIndx = (df['Correlation'].nlargest(1)).index
+# df['Lambda'].min()
+# # df['Lambda'][largestCorIndx]
+#
+# if float(df['Lambda'][(df['Correlation'].nlargest(1)).index]) == df['Lambda'].min():
+#     Lambda = df['Lambda'].min() - (df['Lambda'].max() - df['Lambda'].min())
+# elif float(df['Lambda'][(df['Correlation'].nlargest(1)).index]) == df['Lambda'].max():
+#     Lambda = df['Lambda'].max() + (df['Lambda'].max() - df['Lambda'].min())
 # else:

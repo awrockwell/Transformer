@@ -18,13 +18,18 @@ class load_data:
     def splitYX(self):
         '''
         Used to do analysis, Column by Column
-        :return: Two Numpy Arrays, One with Just the Y and all the others as Xs
+        :return: Three Panda Dfs: first column, remaining columns, all columns
         '''
-        dfY = pd.read_csv(DATA_PATH + self.fileToLoad)["Y"]
-        dfXs = pd.read_csv(DATA_PATH + self.fileToLoad)
-        dfXs = dfXs.loc[:, dfXs.columns != 'Y']
-        return dfY, dfXs
+        dfAll = pd.read_csv(DATA_PATH + self.fileToLoad)
+        dfYheader = str(dfAll.columns[0])
+        dfY = dfAll[dfYheader]
+        dfXs = dfAll.loc[:, dfAll.columns != dfYheader]
+        return dfY, dfXs, dfAll
 
-# DataLoaderClass = load_data("TestData.csv")
+DataLoaderClass = load_data("TestData.csv")
 # print(DataLoaderClass.df_loader())
-# print(DataLoaderClass.splitYX())
+print(DataLoaderClass.splitYX())
+
+# dfY = pd.read_csv(DATA_PATH + self.fileToLoad)["Y"]
+# dfXs = pd.read_csv(DATA_PATH + self.fileToLoad)
+# dfXs = dfXs.loc[:, dfXs.columns != 'Y']

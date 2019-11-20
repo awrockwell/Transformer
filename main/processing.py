@@ -21,14 +21,12 @@ class main_processor:
         self.dfAll = dfAll
         self.TransClass = TransClass
 
-    def BestLambda(self):
+    def BestLambda(self, Xvalue):
         '''
-        Finds optimal lambda for functions
+        Finds optimal lambda for transformation functions
         :return: Pandas Dataframe
         '''
-
-        # this\/ will later be an input \/
-        Xs = self.dfXs
+        Xs = Xvalue
         reg = linear_model.LinearRegression()
 
         TransformClass = self.TransClass()
@@ -47,31 +45,49 @@ class main_processor:
                     Lambda = df['Lambda'][(df['Correlation'].nlargest(2)).index].mean()
                 else:
                     Lambda = df['Lambda'][(df['Correlation'].nlargest(1)).index].mean() - df['Lambda'].std()/x
-            transX1 = TransformClass.equation(Xs=Xs, Lambda=Lambda)
+
+            transX1 = pd.DataFrame(TransformClass.equation(Xs=Xs, Lambda=Lambda))
             reg.fit(transX1, self.dfY)
             df = df.append(pd.DataFrame({'Lambda': [Lambda],
                                          'Correlation': [metrics.r2_score(self.dfY, abs(reg.predict(transX1)))]}), ignore_index=True)
-
         best_lambda = float(df['Lambda'][(df['Correlation'].nlargest(1)).index])
         best_correl = float(df['Correlation'].nlargest(1))
 
-        dfOut = TransformClass.equation(Xs=Xs, Lambda=best_lambda)
+        dfOut = pd.DataFrame(TransformClass.equation(Xs=Xs, Lambda=best_lambda))
 
         # Rename fdOut title names to include correlation and transform type and lambda
         dfOut.columns = dfOut.columns + "|" + TransformClass.__class__.__name__ + "|" + str(best_lambda)
 
         #want to return a non joined table, that should be another function
-        return self.dfAll.join(dfOut), df
+        return dfOut  #, df
 
-    def oneAtaTime(self):
-        pass
 
+    def trnsfrm1ataTime(self):
+        dfXs = self.dfXs
+        df = pd.DataFrame([])
+        x = 1
+        for column in dfXs.columns:
+            dfX = pd.DataFrame(dfXs[column])
+
+            if x == 1:
+                df = self.BestLambda(dfX)
+                x += 1
+            else:
+                df = df.join(self.BestLambda(dfX))
+        return df
+
+
+    def joinAllResults(self, df):
+        return self.dfAll.join(df)
 
 dfAll = pd.read_csv(DATA_PATH + "TestData.csv")
 
-asdf = main_processor(dfAll, BoxCox)
+asdf = main_processor(dfAll, Inverse) #BoxCox)
 
-print(asdf.BestLambda())
+print(asdf.trnsfrm1ataTime())   #.BestLambda(dfAll))
+print(asdf.BestLambda(dfAll))
+
+
 # asdf.BestLambda().to_csv("normalized.csv")
 
 
